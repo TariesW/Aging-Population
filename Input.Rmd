@@ -1,0 +1,118 @@
+---
+title: "Aging Population"
+author: "Tuo"
+date: "4/6/2022"
+output: word_document
+---
+
+# Set up
+```{r}
+# set up librarys 
+library(tidyverse)
+library(readxl)
+```
+
+# Load data
+```{r}
+data <- read_csv("data.csv", col_names = FALSE)
+View(data)
+colnames(data) <- c("year","population","out_of_state_population","in_state_population","in_state_middle_age_population","in_state_aging_population")
+```
+
+# Data Transformation
+```{r}
+data <-
+  data %>%
+  mutate(aging_percent_in_state = in_state_aging_population/in_state_population,
+         aging_percent_out_of_state = in_state_aging_population/out_of_state_population,
+         aging_percent_total_population = in_state_aging_population/population
+         )
+head(data,5)
+# 计算老年人口占比，参见data_01.csv
+```
+
+# Data Visualization
+```{r}
+# 时间序列图，x轴-年份，y轴-户籍老年人口占户籍人口比列
+ggplot(data, aes(x=year, y=data$aging_percent_in_state)) + 
+  geom_line(color="steelblue") +
+  geom_point()+
+  xlab("") + 
+  theme(axis.text.x=element_text(angle=60, hjust=1)) +
+  labs(
+    x = "year",
+    y = "percentage of aging population(In State)",
+    title = "Time Series Polot between year and perentage of aging population",
+    subtitle = "For In State"
+  )
+
+
+# 时间序列图，x轴-年份，y轴-户籍老年人口占外来人口比列
+ggplot(data, aes(x=year, y=data$aging_percent_out_of_state)) + 
+  geom_line(color="darkred") +
+  geom_point()+
+  xlab("") + 
+  theme(axis.text.x=element_text(angle=60, hjust=1)) + 
+  labs(
+    x = "year",
+    y = "percentage of aging population(Out of State)",
+    title = "Time Series Polot between year and perentage of aging population",
+    subtitle = "For Out of State"
+  )
+
+
+# 时间序列图，x轴-年份，y轴-户籍老年人口占总人口比列
+ggplot(data, aes(x=year, y=data$aging_percent_total_population)) + 
+  geom_line(color="darkgreen") +
+  geom_point()+
+  xlab("") + 
+  theme(axis.text.x=element_text(angle=60, hjust=1)) +
+  labs(
+    x = "year",
+    y = "percentage of aging population(Total Population)",
+    title = "Time Series Polot between year and perentage of aging population",
+    subtitle = "For Total"
+  )
+
+```
+
+# Model building linear regression
+```{r}
+# 线性回归模型  x-户籍人口，y-户籍老年人口占户籍人口比列
+model_1 <- lm(aging_percent_in_state ~ in_state_population, data = data)
+summary(model_1)
+# 统计结果显著：p值4.175e-10，模型效果良好： R-squared:0.9431
+# 模型概括：  户籍老龄人口率 =  -1.9061057  +  0.0015293 * 户籍人口
+
+confint(model_1)
+# 模型95%置信区间
+
+
+ggplot(data = data, aes(x=in_state_population,y=aging_percent_in_state))+
+  geom_point()+
+  geom_smooth(method=lm, color = "steelblue")+
+  labs(
+    x = "In State Population",
+    y = "Percentage of Aging population (In State)",
+    title ="Regression Plot"
+  )
+# 模型作图，户籍人口越多，户籍老年人口占比越大，说明老龄化加速
+```
+
+# Model building quadratic regression
+```{r}
+in_state_population2 <- data$in_state_population^2
+
+model_2 <- lm(aging_percent_in_state ~ in_state_population + in_state_population2, data = data)
+summary(model_2)
+# 统计结果显著：p值2.18e-13，模型效果良好： R-squared:0.9887
+# 模型概括：  户籍老龄人口率 =   1.896e+01  -2.792e-02 * 户籍人口 + 1.038e-05 * 户籍人口^2
+
+ggplot(data = data, aes(x=in_state_population,y=aging_percent_in_state))+
+  geom_point()+
+  geom_smooth(method=lm, formula = y ~ x + I(x^2), color = "red")+
+  labs(
+    title ="Quadratic Regression Plot"
+  )
+
+```
